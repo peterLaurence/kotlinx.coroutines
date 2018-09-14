@@ -5,8 +5,6 @@
 package kotlinx.coroutines.exceptions
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.exceptions.*
-import kotlinx.coroutines.selects.*
 import java.io.*
 import kotlin.coroutines.*
 import kotlin.test.*
@@ -60,7 +58,7 @@ class SuppresionTests : TestBase() {
             }
         }
 
-        coroutine.invokeOnCompletion(onCancelling = true) {
+        coroutine.invokeOnCompletion(onFailing = true) {
             assertTrue(it is ArithmeticException)
             assertTrue(it!!.suppressed().isEmpty())
             expect(6)
