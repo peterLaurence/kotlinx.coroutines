@@ -10,7 +10,7 @@ import co.paralleluniverse.fibers.instrument.SuspendableClassifier
 /**
  * @suppress **Internal implementation**.
  */
-class KotlinSuspendableClassifier : SuspendableClassifier {
+internal class KotlinSuspendableClassifier : SuspendableClassifier {
     override fun isSuspendable(
             db: MethodDatabase,
             sourceName: String?,

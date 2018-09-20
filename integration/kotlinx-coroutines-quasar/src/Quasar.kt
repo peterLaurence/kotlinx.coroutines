@@ -17,6 +17,7 @@ import kotlin.coroutines.experimental.startCoroutine
 /**
  * Runs Quasar-instrumented suspendable code from Kotlin coroutine.
  */
+@Deprecated("No replacement, to be removed")
 suspend fun <T> runSuspendable(callable: SuspendableCallable<T>): T = suspendCancellableCoroutine { cont ->
     val fiber = object : Fiber<Unit>() {
         @Throws(SuspendExecution::class)
@@ -37,6 +38,7 @@ suspend fun <T> runSuspendable(callable: SuspendableCallable<T>): T = suspendCan
  * Runs Kotlin suspending function from Quasar-instrumented suspendable code.
  */
 @Suspendable
+@Deprecated("No replacement, to be removed")
 fun <T> runFiberBlocking(block: suspend () -> T): T =
     CoroutineAsync(block).run()
 

@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousFileChannel.aLock() = suspendCancellableCoroutine<FileLock> { cont ->
     lock(cont, asyncIOHandler())
     closeOnCancel(cont)
@@ -30,6 +31,7 @@ suspend fun AsynchronousFileChannel.aLock() = suspendCancellableCoroutine<FileLo
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousFileChannel.aLock(
     position: Long,
     size: Long,
@@ -45,6 +47,7 @@ suspend fun AsynchronousFileChannel.aLock(
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousFileChannel.aRead(
     buf: ByteBuffer,
     position: Long
@@ -59,6 +62,7 @@ suspend fun AsynchronousFileChannel.aRead(
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousFileChannel.aWrite(
     buf: ByteBuffer,
     position: Long
@@ -73,6 +77,7 @@ suspend fun AsynchronousFileChannel.aWrite(
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousServerSocketChannel.aAccept() = suspendCancellableCoroutine<AsynchronousSocketChannel> { cont ->
     accept(cont, asyncIOHandler())
     closeOnCancel(cont)
@@ -84,6 +89,7 @@ suspend fun AsynchronousServerSocketChannel.aAccept() = suspendCancellableCorout
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousSocketChannel.aConnect(
     socketAddress: SocketAddress
 ) = suspendCancellableCoroutine<Unit> { cont ->
@@ -97,6 +103,7 @@ suspend fun AsynchronousSocketChannel.aConnect(
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousSocketChannel.aRead(
     buf: ByteBuffer,
     timeout: Long = 0L,
@@ -112,6 +119,7 @@ suspend fun AsynchronousSocketChannel.aRead(
  * If the [Job] of the current coroutine is cancelled or completed while this suspending function is waiting, this function
  * *closes the underlying channel* and immediately resumes with [CancellationException].
  */
+@Deprecated("No replacement, to be removed")
 suspend fun AsynchronousSocketChannel.aWrite(
     buf: ByteBuffer,
     timeout: Long = 0L,
