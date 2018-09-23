@@ -615,8 +615,8 @@ internal open class JobSupport constructor(active: Boolean) : Job, SelectClause0
     public override fun cancel(cause: Throwable?): Boolean =
         fail(cause, cancel = true) && handlesException
 
-    // child is reporting failure to the parent
-    internal fun childFailed(cause: Throwable) =
+    // child is reporting failure to the parent (supervisor jobs override to ignore it)
+    internal open fun childFailed(cause: Throwable) =
         fail(cause, cancel = false) && handlesException
 
     // parent is cancelling child

@@ -19,7 +19,9 @@ import kotlin.coroutines.experimental.*
  * of parent immediately cancels all its [children].
  *
  * The most basic instances of [Job] are created with [launch][CoroutineScope.launch] coroutine builder or with a
- * `Job()` factory function.
+ * `Job()` factory function. By default, a failure of a any of the job's children leads to an immediately failure
+ * of its parent and cancellation of the rest of its children. This behavior can be customized using [SupervisorJob].
+ *
  * Conceptually, an execution of the job does not produce a result value. Jobs are launched solely for their
  * side-effects. See [Deferred] interface for a job that produces a result.
  *
@@ -369,8 +371,13 @@ public interface Job : CoroutineContext.Element {
 }
 
 /**
- * Creates a new job object in an _active_ state.
- * It is optionally a child of a [parent] job.
+ * Creates a new job object in an active state.
+ * A failure of any child of this job immediately causes this job to fail, too, and cancels the rest of its children.
+ *
+ * To handle children failure independently of each other use [SupervisorJob].
+ *
+ * @param parent an optional parent job. If specified, this job becomes a child job of its parent and
+ *        is cancelled when its parent fails or is cancelled.
  */
 @Suppress("FunctionName")
 public fun Job(parent: Job? = null): Job = JobImpl(parent)
