@@ -9,6 +9,7 @@ import kotlinx.coroutines.experimental.internal.*
 import kotlinx.coroutines.experimental.intrinsics.*
 import kotlinx.coroutines.experimental.selects.*
 import kotlin.coroutines.experimental.*
+import kotlin.coroutines.experimental.intrinsics.*
 
 /**
  * A concrete implementation of [Job]. It is optionally a child to a parent job.
@@ -1056,6 +1057,28 @@ internal open class JobSupport constructor(active: Boolean) : Job, SelectClause0
             "ChildCompletion[$child, $proposedUpdate]"
     }
 
+    private class AwaitContinuation<T>(
+        delegate: Continuation<T>,
+        private val job: JobSupport
+    ) : CancellableContinuationImpl<T>(delegate, MODE_CANCELLABLE) {
+        override fun getCancellationState(parent: Job): CompletedExceptionally {
+            val state = job.state
+            /*
+             * When the job we are waiting for had already completely completed exceptionally or
+             * is failing, we shall use its root/completion cause for await's result.
+             */
+            if (state is Finishing) {
+                val rootCause = state.rootCause
+                if (rootCause != null) return CompletedExceptionally(rootCause)
+            }
+            if (state is CompletedExceptionally) return CompletedExceptionally(state.cause)
+            return super.getCancellationState(parent)
+        }
+
+        protected override fun nameString(): String =
+            "AwaitContinuation(${delegate.toDebugString()})"
+    }
+
     /*
      * =================================================================================================
      * This is ready-to-use implementation for Deferred interface.
@@ -1100,16 +1123,16 @@ internal open class JobSupport constructor(active: Boolean) : Job, SelectClause0
         return awaitSuspend() // slow-path
     }
 
-    private suspend fun awaitSuspend(): Any? = suspendCancellableCoroutine { cont ->
-        // We have to invoke await() handler only on cancellation, on completion we will be resumed regularly without handlers
-        cont.disposeOnCancellation(invokeOnCompletion {
-            val state = this.state
-            check(state !is Incomplete)
-            if (state is CompletedExceptionally)
-                cont.resumeWithException(state.cause)
-            else
-                cont.resume(state)
-        })
+    private suspend fun awaitSuspend(): Any? = suspendCoroutineUninterceptedOrReturn { uCont ->
+        /*
+         * Custom code here, so that parent coroutine that is using await
+         * on its child deferred (async) coroutine would throw the exception that this child had
+         * thrown and not a JobCancellationException.
+         */
+        val cont = AwaitContinuation(uCont.intercepted(), this)
+        cont.initCancellability()
+        invokeOnCompletion(ResumeAwaitOnCompletion(this, cont).asHandler)
+        cont.getResult()
     }
 
     /**
@@ -1174,8 +1197,7 @@ private class Empty(override val isActive: Boolean) : Incomplete {
     override fun toString(): String = "Empty{${if (isActive) "Active" else "New" }}"
 }
 
-internal class JobImpl(parent: Job? = null) : JobSupport(true) {
-    init { initParentJobInternal(parent) }
+internal class JobImpl(parent: Job? = null) : JobSupport(true) {    init { initParentJobInternal(parent) }
     override val onFailComplete get() = true
     override val handlesException: Boolean get() = false
 }
@@ -1235,6 +1257,25 @@ private class ResumeOnCompletion(
 ) : JobNode<Job>(job)  {
     override fun invoke(cause: Throwable?) = continuation.resume(Unit)
     override fun toString() = "ResumeOnCompletion[$continuation]"
+}
+
+private class ResumeAwaitOnCompletion<T>(
+    job: JobSupport,
+    private val continuation: AbstractContinuation<T>
+) : JobNode<JobSupport>(job) {
+    override fun invoke(cause: Throwable?) {
+        val state = job.state
+        check(state !is Incomplete)
+        if (state is CompletedExceptionally) {
+            // Resume with exception in atomic way to preserve exception
+            continuation.resumeWithExceptionMode(state.cause, MODE_ATOMIC_DEFAULT)
+        } else {
+            // Resuming with value in a cancellable way (AwaitContinuation is configured for this mode).
+            @Suppress("UNCHECKED_CAST")
+            continuation.resume(state as T)
+        }
+    }
+    override fun toString() = "ResumeAwaitOnCompletion[$continuation]"
 }
 
 internal class DisposeOnCompletion(
@@ -1304,7 +1345,7 @@ internal class ChildContinuation(
     @JvmField val child: AbstractContinuation<*>
 ) : JobFailingNode<Job>(parent) {
     override fun invoke(cause: Throwable?) {
-        child.cancel(job.getCancellationException())
+        child.cancelInternal(child.getCancellationState(job))
     }
     override fun toString(): String =
         "ChildContinuation[$child]"

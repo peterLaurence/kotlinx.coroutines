@@ -8,16 +8,13 @@ import kotlin.coroutines.experimental.*
 import kotlin.test.*
 
 class CoroutineScopeTest : TestBase() {
-
     @Test
     fun testScope() = runTest {
         suspend fun callJobScoped() = coroutineScope {
             expect(2)
-
             launch {
                 expect(4)
             }
-
             launch {
                 expect(5)
 
@@ -28,12 +25,9 @@ class CoroutineScopeTest : TestBase() {
                 expect(6)
 
             }
-
             expect(3)
             42
         }
-
-
         expect(1)
         val result = callJobScoped()
         assertEquals(42, result)
@@ -45,59 +39,65 @@ class CoroutineScopeTest : TestBase() {
     fun testScopeCancelledFromWithin() = runTest {
         expect(1)
         suspend fun callJobScoped() = coroutineScope {
-
             launch {
                 expect(2)
                 delay(Long.MAX_VALUE)
             }
-
             launch {
                 expect(3)
-                throw IllegalArgumentException()
+                throw TestException2()
             }
         }
 
         try {
             callJobScoped()
             expectUnreached()
-        } catch (e: IllegalArgumentException) {
+        } catch (e: TestException2) {
             expect(4)
         }
-
         yield() // Check we're not cancelled
         finish(5)
+    }
+
+    @Test
+    fun testExceptionFromWithin() = runTest {
+        expect(1)
+        try {
+            expect(2)
+            coroutineScope {
+                expect(3)
+                throw TestException1()
+            }
+            expectUnreached()
+        } catch (e: TestException1) {
+            finish(4)
+        }
     }
 
     @Test
     fun testScopeBlockThrows() = runTest {
         expect(1)
         suspend fun callJobScoped(): Unit = coroutineScope {
-
             launch {
                 expect(2)
                 delay(Long.MAX_VALUE)
             }
-
             yield() // let launch sleep
-            throw NotImplementedError()
+            throw TestException1()
         }
-
         try {
             callJobScoped()
             expectUnreached()
-        } catch (e: NotImplementedError) {
+        } catch (e: TestException1) {
             expect(3)
         }
-
         yield() // Check we're not cancelled
         finish(4)
     }
 
     @Test
     fun testOuterJobIsCancelled() = runTest {
-
         suspend fun callJobScoped() = coroutineScope {
-
             launch {
                 expect(3)
                 try {
@@ -112,7 +112,6 @@ class CoroutineScopeTest : TestBase() {
             42
         }
 
-
         val outerJob = launch(NonCancellable) {
             expect(1)
             try {
@@ -123,7 +122,6 @@ class CoroutineScopeTest : TestBase() {
                 assertNull(e.cause)
             }
         }
-
         repeat(3) { yield() } // let everything to start properly
         outerJob.cancel()
         outerJob.join()
@@ -131,21 +129,21 @@ class CoroutineScopeTest : TestBase() {
     }
 
     @Test
-    fun testAsyncCancellation() = runTest {
+    fun testAsyncCancellationFirst() = runTest {
         try {
             expect(1)
-            failedConcurrentSum()
+            failedConcurrentSumFirst()
             expectUnreached()
-        } catch (e: IndexOutOfBoundsException) {
-            finish(5)
+        } catch (e: TestException1) {
+            finish(6)
         }
     }
 
-    private suspend fun failedConcurrentSum(): Int = coroutineScope {
+    // First async child fails -> second is cancelled
+    private suspend fun failedConcurrentSumFirst(): Int = coroutineScope {
         val one = async<Int> {
-            println("First child throws an exception")
             expect(3)
-            throw IndexOutOfBoundsException()
+            throw TestException1()
         }
         val two = async<Int>(start = CoroutineStart.ATOMIC) {
             try {
@@ -153,10 +151,39 @@ class CoroutineScopeTest : TestBase() {
                 delay(Long.MAX_VALUE) // Emulates very long computation
                 42
             } finally {
-                println("Second child was cancelled")
+                expect(5)
             }
         }
+        expect(2)
+        one.await() + two.await()
+    }
 
+    @Test
+    fun testAsyncCancellationSecond() = runTest {
+        try {
+            expect(1)
+            failedConcurrentSumSecond()
+            expectUnreached()
+        } catch (e: TestException1) {
+            finish(6)
+        }
+    }
+
+    // Second async child fails -> fist is cancelled
+    private suspend fun failedConcurrentSumSecond(): Int = coroutineScope {
+        val one = async<Int> {
+            try {
+                expect(3)
+                delay(Long.MAX_VALUE) // Emulates very long computation
+                42
+            } finally {
+                expect(5)
+            }
+        }
+        val two = async<Int>(start = CoroutineStart.ATOMIC) {
+            expect(4)
+            throw TestException1()
+        }
         expect(2)
         one.await() + two.await()
     }
@@ -173,13 +200,11 @@ class CoroutineScopeTest : TestBase() {
                     expect(3)
                 }
             }
-
             yield()
-
             // UI updater
             withContext(coroutineContext) {
                 expect(2)
-                throw AssertionError()
+                throw TestException1()
                 data.await() // Actually unreached
                 expectUnreached()
             }
@@ -188,11 +213,11 @@ class CoroutineScopeTest : TestBase() {
         try {
             loadData()
             expectUnreached()
-        } catch (e: AssertionError) {
+        } catch (e: TestException1) {
             finish(4)
         }
     }
-    
+
     @Test
     fun testScopePlusContext() {
         assertSame(EmptyCoroutineContext, scopePlusContext(EmptyCoroutineContext, EmptyCoroutineContext))
@@ -206,4 +231,7 @@ class CoroutineScopeTest : TestBase() {
 
     private fun scopePlusContext(c1: CoroutineContext, c2: CoroutineContext) =
         (CoroutineScope(c1) + c2).coroutineContext
+
+    private class TestException1 : Exception()
+    private class TestException2 : Exception()
 }

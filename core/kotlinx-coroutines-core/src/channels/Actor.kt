@@ -197,7 +197,6 @@ private open class ActorCoroutine<E>(
         _channel.cancel(cause)
     }
 
-    override val failsParent: Boolean get() = true
     override fun handleJobException(exception: Throwable) = handleExceptionViaHandler(parentContext, exception)
 }
 

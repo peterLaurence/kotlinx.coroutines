@@ -57,6 +57,8 @@ private class RxMaybeCoroutine<T>(
     parentContext: CoroutineContext,
     private val subscriber: MaybeEmitter<T>
 ) : AbstractCoroutine<T>(parentContext, true), Cancellable {
+    override val failsParent: Boolean get() = true
+
     override fun onCompleted(value: T) {
         if (!subscriber.isDisposed) {
             if (value == null) subscriber.onComplete() else subscriber.onSuccess(value)

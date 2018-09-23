@@ -67,6 +67,7 @@ private class PublisherCoroutine<in T>(
     private val subscriber: Subscriber<T>
 ) : AbstractCoroutine<Unit>(parentContext, true), ProducerScope<T>, Subscription, SelectClause2<T, SendChannel<T>> {
     override val channel: SendChannel<T> get() = this
+    override val failsParent: Boolean get() = true
 
     // Mutex is locked when either nRequested == 0 or while subscriber.onXXX is being invoked
     private val mutex = Mutex(locked = true)

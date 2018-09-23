@@ -196,6 +196,7 @@ private open class DeferredCoroutine<T>(
     parentContext: CoroutineContext,
     active: Boolean
 ) : AbstractCoroutine<T>(parentContext, active), Deferred<T>, SelectClause1<T> {
+    override val failsParent: Boolean get() = true
     override fun getCompleted(): T = getCompletedInternal() as T
     override suspend fun await(): T = awaitInternal() as T
     override val onAwait: SelectClause1<T> get() = this
